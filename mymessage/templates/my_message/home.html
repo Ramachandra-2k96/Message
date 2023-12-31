@@ -1,0 +1,154 @@
+<!-- chat.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif; /* Use a web font for a modern look */
+            background-color: #f5f5f5; /* Light gray background */
+            z-index: 1;
+        }
+
+        #chat-container {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            background-color: #ffffff; /* White background */
+        }
+
+       
+        .message-box {
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            transition: background-color 0.3s ease; 
+            display: block;
+            max-width: 40%; 
+            word-wrap: break-word; 
+        }
+    
+        .my-message {
+            background-color: #DCF8C6; /* Light green for my messages */
+            text-align: right;
+            margin-left: auto; /* Push my messages to the right */
+        }
+    
+        .other-message {
+            background-color: #f0f0f0;
+            text-align: left;
+        }
+    
+        .message strong {
+            color: #1a202c; /* Dark gray text color */
+            margin-right: 5px;
+        }
+        .message-box:hover {
+            background-color: #edf2f7; /* Light blue on hover */
+        }
+
+
+        #chat-form {
+            margin-top: 10px;
+            display: flex;
+        }
+
+        #message_input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-right: 8px;
+        }
+
+        #send-button {
+            background-color: #075e54; /* WhatsApp green color */
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+           
+        }
+    
+    </style>
+</head>
+<body class="font-sans bg-gray-100">
+    <div class="container mx-auto p-4">
+        <h1 class="text-3xl font-bold mb-4 text-center text-gray-800">Chat Room</h1>
+        <div id="chat-container" class="overflow-y-auto">
+            <!-- Messages will be dynamically added here -->
+        </div>
+        <form id="chat-form" class="mt-4">
+            {% csrf_token %}
+            <input type="text" id="message_input" placeholder="Type a message..." class="flex-1 p-2 border rounded">
+            <button type="button" id="send-button" class="bg-green-500 text-white px-4 py-2 rounded">Send</button>
+        </form>
+    </div>
+
+    <script>
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
+    
+        function updateChat() {
+            fetch('{% url 'get_m' %}')
+                .then(response => response.json())
+                .then(data => {
+                    const chatContainer = document.getElementById('chat-container');
+                    chatContainer.innerHTML = "";
+                    data.messages.forEach(message => {
+                        const messageBox = document.createElement('div');
+                        messageBox.className = `message-box ${message.is_mine ? 'my-message' : 'other-message'}`;
+                        const nameHTML = message.is_mine ? '' : `<strong>${message.user}:</strong> `;
+                        const timeHTML = `<span class="text-gray-500 ml-auto" style="font-size: 10px;">${formatTime(message.timestamp)}</span>`;
+                        
+                        messageBox.innerHTML = `<div class="message">${nameHTML}${message.content}</div>${timeHTML}`;
+                        chatContainer.appendChild(messageBox);
+                    });
+                    chatContainer.scrollTop = chatContainer.scrollHeight; 
+                }); 
+        }
+    
+        // Load messages when the page loads
+        document.addEventListener('DOMContentLoaded', function () {
+            updateChat();
+        });
+    
+        // Periodically update the chat every 5 seconds
+        setInterval(updateChat, 3000);
+    
+        document.getElementById('send-button').addEventListener('click', function () {
+            const messageInput = document.getElementById('message_input');
+            const messageContent = messageInput.value;
+    
+            if (messageContent.trim() !== '') {
+                fetch('{% url 'chat_view1' %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': document.getElementsByName('csrfmiddlewaretoken')[0].value,
+                    },
+                    body: `message_input=${encodeURIComponent(messageContent)}`,
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            messageInput.value = '';
+                            updateChat();
+                        }
+                    });
+            }
+        });
+    </script>
+    
+</body>
+</html>
